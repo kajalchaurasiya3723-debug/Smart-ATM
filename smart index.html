@@ -1,0 +1,291 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart ATM Project</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
+body{background:#0b1423;color:white;padding:20px}
+.atm{max-width:650px;margin:auto;background:#172437;padding:22px;border-radius:25px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:25px}
+header h1{font-size:25px;letter-spacing:2px}
+.status{color:#86efac;font-size:12px}
+.screen{background:#101c2d;padding:20px;border-radius:18px}
+h2{margin-bottom:12px}
+p{color:#a9b8ca;line-height:1.7;font-size:14px}
+label{display:block;margin-top:15px;font-size:13px}
+input{width:100%;padding:13px;margin-top:7px;background:#202f44;border:1px solid #3a4c64;color:white;border-radius:10px}
+button{padding:14px;background:#168bca;color:white;border:0;border-radius:10px;font-weight:bold;cursor:pointer}
+button:hover{filter:brightness(1.15)}
+.primary{width:100%;margin-top:15px}
+.hidden{display:none!important}
+.message{margin-top:12px;color:#ffcc80;font-size:13px}
+.balance{background:linear-gradient(135deg,#064e3b,#166534);padding:25px;border-radius:25px;margin:20px 0}
+.balance h2{font-size:14px;color:#bbf7d0}
+.balance strong{font-size:36px;display:block;margin:15px 0}
+.balance p{color:#bbf7d0}
+.menu{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+.menu button{background:#202d41;text-align:left;min-height:100px;font-size:17px}
+.menu span{display:block;color:#a7b5c8;font-size:12px;margin-top:13px;font-weight:normal}
+.statement{background:#202d41;padding:20px;border-radius:25px;margin-top:22px}
+.statement h2{font-size:25px;margin-bottom:20px}
+.transaction{padding:15px 0;border-bottom:1px solid #3b495d}
+.transaction small{display:block;color:#9eafc3;margin-top:8px}
+.credit{color:#86efac}.debit{color:#fda4af}
+.receipt{background:white;color:#182638;border-radius:12px;padding:20px;margin-top:15px}
+.receipt p{color:#334155}
+.receipt div{display:flex;justify-content:space-between;gap:10px;margin:12px 0;font-size:12px}
+.notice{text-align:center;color:#8b9bb0;font-size:11px;margin-top:20px;line-height:1.6}
+@media(max-width:420px){body{padding:8px}.atm{padding:12px}.screen{padding:14px}.balance strong{font-size:30px}.menu button{font-size:15px}}
+@media print{body{background:white}.atm{display:none}.printReceipt{display:block!important}}
+</style>
+</head>
+<body>
+<div class="atm">
+<header>
+<h1>SMART ATM</h1>
+<span class="status">● ATM ONLINE</span>
+</header>
+
+<div class="screen">
+<section id="login">
+<h2>Welcome to Smart ATM</h2>
+<p>Login using the demo account details.</p>
+<label>Account Number</label>
+<input id="account" value="123456789012" maxlength="12">
+<label>4-Digit PIN</label>
+<input id="pin" type="password" maxlength="4" placeholder="Enter PIN">
+<button class="primary" onclick="login()">Login Securely</button>
+<div id="loginMsg" class="message"></div>
+<p>Demo Account: 123456789012<br>Demo PIN: 1234</p>
+</section>
+
+<section id="dashboard" class="hidden">
+<div class="balance">
+<h2>Available Balance</h2>
+<strong id="balance">₹21,000</strong>
+<p>Demo account · Simulated funds only</p>
+</div>
+
+<div class="menu">
+<button onclick="showBalance()">▣ Check Balance<span>View available funds</span></button>
+<button onclick="openForm('withdraw')">↗ Withdraw<span>Cash withdrawal demo</span></button>
+<button onclick="openForm('deposit')">↙ Deposit<span>Add demo funds</span></button>
+<button onclick="openForm('transfer')">➤ Transfer<span>Simulated transfer</span></button>
+</div>
+
+<div id="formArea" class="hidden">
+<h2 id="formTitle" style="margin-top:22px"></h2>
+<label>Amount (₹)</label>
+<input id="amount" type="number" min="1" placeholder="Enter amount">
+<div id="recipientArea" class="hidden">
+<label>Recipient Name</label>
+<input id="recipient" placeholder="Enter recipient name">
+<label>Recipient Account (8–12 digits)</label>
+<input id="recipientAccount" maxlength="12" placeholder="Account number">
+</div>
+<button class="primary" onclick="transact()">Confirm Transaction</button>
+<button class="primary" onclick="hideForm()" style="background:#34455c">Cancel</button>
+<div id="formMsg" class="message"></div>
+</div>
+
+<div id="balanceArea" class="hidden">
+<h2 style="margin-top:20px">Your Balance</h2>
+<p id="balanceDetail"></p>
+<button class="primary" onclick="showBalance()" style="background:#34455c">Refresh Balance</button>
+</div>
+
+<div class="statement">
+<h2>Mini Statement</h2>
+<div id="history"></div>
+</div>
+<button class="primary" onclick="logout()" style="background:transparent;border:1px solid #475569">Eject Card / Logout</button>
+</section>
+
+<section id="receiptArea" class="hidden">
+<h2>✓ Transaction Successful</h2>
+<p>Your demo transaction is complete.</p>
+<div class="receipt" id="receipt"></div>
+<button class="primary" onclick="window.print()">Print / Save PDF</button>
+<button class="primary" onclick="backToDashboard()" style="background:#34455c">Back to ATM</button>
+</section>
+</div>
+<div class="notice">
+STUDENT PROJECT DEMO ONLY · No real banking system connected.<br>
+No localStorage, sessionStorage, cookies or database is used.
+</div>
+</div>
+
+<script>
+const demoAccount="123456789012";
+let demoPin="1234";
+let balance=21000;
+let transactions=[];
+let mode="";
+let attempts=0;
+
+function money(n){
+ return "₹"+n.toLocaleString("en-IN");
+}
+
+function show(id){
+ ["login","dashboard","receiptArea"].forEach(x=>{
+  document.getElementById(x).classList.add("hidden");
+ });
+ document.getElementById(id).classList.remove("hidden");
+}
+
+function login(){
+ if(attempts>=3){
+  document.getElementById("loginMsg").textContent="Too many attempts. Refresh to restart.";
+  return;
+ }
+ let a=document.getElementById("account").value.trim();
+ let p=document.getElementById("pin").value;
+ if(a===demoAccount && p===demoPin){
+  document.getElementById("pin").value="";
+  show("dashboard");
+  update();
+ }else{
+  attempts++;
+  document.getElementById("loginMsg").textContent="Incorrect details. Attempts left: "+(3-attempts);
+ }
+}
+
+function update(){
+ document.getElementById("balance").textContent=money(balance);
+ let h=document.getElementById("history");
+ h.replaceChildren();
+ if(transactions.length===0){
+  h.textContent="No transactions yet.";
+  return;
+ }
+ transactions.slice(0,10).forEach(t=>{
+  let row=document.createElement("div");
+  row.className="transaction";
+  let title=document.createElement("strong");
+  title.textContent=t.type;
+  let amount=document.createElement("strong");
+  amount.className=t.type==="Deposit"?"credit":"debit";
+  amount.textContent=(t.type==="Deposit"?"+":"−")+money(t.amount);
+  let top=document.createElement("div");
+  top.style.display="flex";
+  top.style.justifyContent="space-between";
+  top.append(title,amount);
+  let small=document.createElement("small");
+  small.textContent=t.time+" · "+t.id;
+  row.append(top,small);
+  h.append(row);
+ });
+}
+
+function showBalance(){
+ document.getElementById("balanceArea").classList.remove("hidden");
+ document.getElementById("balanceDetail").textContent="Available balance: "+money(balance);
+}
+
+function openForm(type){
+ mode=type;
+ document.getElementById("formArea").classList.remove("hidden");
+ document.getElementById("balanceArea").classList.add("hidden");
+ document.getElementById("formTitle").textContent=
+  type==="withdraw"?"Cash Withdrawal":
+  type==="deposit"?"Cash Deposit":"Demo Money Transfer";
+ document.getElementById("recipientArea").classList.toggle("hidden",type!=="transfer");
+ document.getElementById("amount").value="";
+ document.getElementById("formMsg").textContent="";
+ document.getElementById("recipient").value="";
+ document.getElementById("recipientAccount").value="";
+}
+
+function hideForm(){
+ document.getElementById("formArea").classList.add("hidden");
+}
+
+function transact(){
+ let amount=Number(document.getElementById("amount").value);
+ let msg=document.getElementById("formMsg");
+ if(!Number.isSafeInteger(amount)||amount<=0){
+  msg.textContent="Enter a valid whole-number amount.";
+  return;
+ }
+ if(mode==="withdraw" && amount>20000){
+  msg.textContent="Maximum withdrawal is ₹20,000.";
+  return;
+ }
+ if(mode==="deposit" && amount>50000){
+  msg.textContent="Maximum deposit is ₹50,000.";
+  return;
+ }
+ if(mode==="withdraw" && amount%100!==0){
+  msg.textContent="Withdrawal must be a multiple of ₹100.";
+  return;
+ }
+ if(mode!=="deposit" && amount>balance){
+  msg.textContent="Insufficient demo balance.";
+  return;
+ }
+ let extra="";
+ if(mode==="transfer"){
+  let name=document.getElementById("recipient").value.trim();
+  let acc=document.getElementById("recipientAccount").value.trim();
+  if(name.length<2||!/^\d{8,12}$/.test(acc)||acc===demoAccount){
+   msg.textContent="Enter a recipient name and a different 8–12 digit account.";
+   return;
+  }
+  extra="Recipient: "+name+" · Account ending "+acc.slice(-4);
+ }
+ let type=mode==="withdraw"?"Withdraw":mode==="deposit"?"Deposit":"Transfer";
+ if(mode==="deposit") balance+=amount;
+ else balance-=amount;
+
+ let t={
+  type:type,
+  amount:amount,
+  time:new Date().toLocaleString("en-IN"),
+  id:"ATM"+Date.now().toString().slice(-8),
+  balance:balance,
+  extra:extra
+ };
+ transactions.unshift(t);
+ update();
+ document.getElementById("receipt").replaceChildren();
+ let details=[
+  ["Transaction ID",t.id],
+  ["Date & Time",t.time],
+  ["Transaction",t.type],
+  ["Amount",money(t.amount)],
+  ["Details",t.extra||"Demo transaction"],
+  ["New Balance",money(t.balance)],
+  ["Status","SUCCESS — DEMO ONLY"]
+ ];
+ details.forEach(pair=>{
+  let line=document.createElement("div");
+  let a=document.createElement("span");
+  let b=document.createElement("strong");
+  a.textContent=pair[0];
+  b.textContent=pair[1];
+  line.append(a,b);
+  document.getElementById("receipt").append(line);
+ });
+ show("receiptArea");
+}
+
+function backToDashboard(){
+ show("dashboard");
+ update();
+}
+
+function logout(){
+ document.getElementById("pin").value="";
+ document.getElementById("formArea").classList.add("hidden");
+ document.getElementById("balanceArea").classList.add("hidden");
+ show("login");
+}
+
+// All demo data is kept in temporary JavaScript memory only.
+</script>
+</body>
+</html>
